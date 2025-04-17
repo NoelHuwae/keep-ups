@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mediapipe Keep-Ups (Easier)</title>
+    <style>
+        /* CSS remains the same as before */
+        body {
+            margin: 0;
+            overflow: hidden; /* Prevent scrollbars */
+            font-family: sans-serif;
+            background-color: #222;
+            color: white; /* Default text color */
+        }
+
+        .container {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .webcam-container {
+            position: relative; /* Needed for absolute positioning of overlay */
+            width: 50%;
+            height: 100%;
+            background-color: #111;
+        }
+
+        #webcam, #overlayCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Cover the area, might crop */
+            transform: scaleX(-1); /* Mirror webcam */
+        }
+
+        #overlayCanvas {
+           background: transparent; /* Make canvas transparent */
+           z-index: 1; /* Ensure overlay is on top of video */
+        }
+
+        #game-container {
+            width: 50%;
+            height: 100%;
+            background-color: #333;
+            position: relative; /* If you need to position UI elements */
+        }
+
+        canvas#gameCanvas { /* Style the canvas added by three.js */
+            display: block; /* Remove potential bottom space */
+            width: 100% !important; /* Override three.js inline style */
+            height: 100% !important;/* Override three.js inline style */
+        }
+
+        #loading-message {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 10;
+        }
+         #score {
+            position: absolute;
+            top: 10px;
+            right: 60%; /* Position relative to viewport width */
+            transform: translateX(-10px); /* Adjust spacing from the split */
+            font-size: 24px;
+            color: yellow;
+            background: rgba(0,0,0,0.5);
+            padding: 5px 10px;
+            border-radius: 5px;
+            z-index: 5;
+         }
+    </style>
+    <!-- Load Mediapipe libraries FIRST -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="webcam-container">
+            <video id="webcam" autoplay playsinline></video>
+            <canvas id="overlayCanvas"></canvas>
+        </div>
+        <div id="game-container">
+            <!-- Three.js canvas will be appended here -->
+        </div>
+    </div>
+
+    <!-- Info / Loading Message -->
+    <div id="loading-message">Loading libraries...</div>
+    <div id="score">Keep-ups: 0</div>
+
+    <!-- Main Game Logic (Module) -->
+    <script type="module">
+        // --- Imports ---
+        import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js'; // Use specific version
+        import RAPIER from 'https://cdn.skypack.dev/@dimforge/rapier3d-compat';
+
+        // --- Global Variables ---
+        let scene, camera, renderer, clock;
+        let physicsWorld, eventQueue;
+        let ballMesh, groundMesh;
+        let ballBody, groundBody;
+        let leftKneeCollider, rightKneeCollider, leftFootCollider, rightFootCollider;
+        let leftKneeMesh, rightKneeMesh, leftFootMesh, rightFootMesh; // Visual representations
+        let leftLegLine, rightLegLine; // Lines connecting knees and feet
+        const playerColliderRadius = 0.12; // Keep physics collider size consistent
+        const kneeMarkerRadius = 0.2; // Visual size for knee circle
+        const footMarkerSize = { w: 0.35, h: 0.12, d: 0.35 }; // Width, height, depth for shoe marker
+        const ballRadius = 0.2;
+        let score = 0;
+        let ballJustHitPlayer = false;
+
+        // DOM Elements
+        const videoElement = document.getElementById('webcam');
+        const overlayCanvas = document.getElementById('overlayCanvas');
+        const overlayCtx = overlayCanvas.getContext('2d');
+        const gameContainer = document.getElementById('game-container');
+        const loadingMessage = document.getElementById('loading-message');
+        const scoreElement = document.getElementById('score');
+
+        let lastPoseResults = null;
+
+        // --- Configurable Game Parameters ---
+        const HIT_IMPULSE_Y = 0.15;
+        const Z_DAMPING = 0.5;
+        const Z_CORRECTION_FACTOR = 0.1;
+        const MAX_Z_DISTANCE = 0.7;
+
+        function initThree() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87ceeb); // Sky blue
+
+            const aspect = gameContainer.offsetWidth / gameContainer.offsetHeight;
+            camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 100);
+            camera.position.set(0, 2, 5);
+            camera.lookAt(0, 0.8, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(gameContainer.offsetWidth, gameContainer.offsetHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.domElement.id = 'gameCanvas';
+            gameContainer.appendChild(renderer.domElement);
+
+            clock = new THREE.Clock();
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.9);
+            directionalLight.position.set(3, 8, 5);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 1024;
+            directionalLight.shadow.mapSize.height = 1024;
+            scene.add(directionalLight);
+
+            // Ground
+            const groundGeometry = new THREE.BoxGeometry(8, 0.2, 8);
+            const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x228b22 }); // Forest green
+            groundMesh = new THREE.Mesh(groundGeometry, groundMaterial);
+            groundMesh.receiveShadow = true;
+            groundMesh.position.y = -0.1;
+            scene.add(groundMesh);
+
+            // Ball
+            const ballGeometry = new THREE.SphereGeometry(ballRadius, 32, 32);
+            const ballMaterial = new THREE.MeshStandardMaterial({
+                color: 0xffffff,
+                map: createSoccerTexture(),
+                roughness: 0.4,
+                metalness: 0.1
+             });
+            ballMesh = new THREE.Mesh(ballGeometry, ballMaterial);
+            ballMesh.castShadow = true;
+            ballMesh.position.y = 2.5;
+            scene.add(ballMesh);
+
+            // --- Player Marker Visuals ---
+            // Knee Markers (Blue Circles)
+            const kneeMaterial = new THREE.MeshStandardMaterial({ color: 0x0077ff }); // Bright blue
+            const kneeGeometry = new THREE.SphereGeometry(kneeMarkerRadius, 16, 16); // Use visual radius
+            leftKneeMesh = new THREE.Mesh(kneeGeometry, kneeMaterial);
+            rightKneeMesh = new THREE.Mesh(kneeGeometry, kneeMaterial);
+
+            // Foot Markers (Red Shoes - simple boxes)
+            const footMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 }); // Red
+            const footGeometry = new THREE.BoxGeometry(footMarkerSize.w, footMarkerSize.h, footMarkerSize.d);
+            leftFootMesh = new THREE.Mesh(footGeometry, footMaterial);
+            rightFootMesh = new THREE.Mesh(footGeometry, footMaterial);
+
+            // Position markers initially off-screen
+            leftKneeMesh.position.set(-10, -10, -10);
+            rightKneeMesh.position.set(-10, -10, -10);
+            leftFootMesh.position.set(-10, -10, -10);
+            rightFootMesh.position.set(-10, -10, -10);
+            scene.add(leftKneeMesh, rightKneeMesh, leftFootMesh, rightFootMesh);
+
+            // Leg Lines (White)
+            const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 3 }); // White line (linewidth might be limited)
+            const leftLineGeometry = new THREE.BufferGeometry().setFromPoints([ new THREE.Vector3(), new THREE.Vector3() ]);
+            const rightLineGeometry = new THREE.BufferGeometry().setFromPoints([ new THREE.Vector3(), new THREE.Vector3() ]);
+            leftLegLine = new THREE.Line(leftLineGeometry, lineMaterial);
+            rightLegLine = new THREE.Line(rightLineGeometry, lineMaterial);
+            leftLegLine.visible = false;
+            rightLegLine.visible = false;
+            scene.add(leftLegLine, rightLegLine);
+            // --- End Player Marker Visuals ---
+
+            window.addEventListener('resize', onWindowResize, false);
+            onWindowResize();
+        }
+
+        function createSoccerTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128; canvas.height = 128;
+            const context = canvas.getContext('2d');
+            context.fillStyle = '#FFFFFF';
+            context.fillRect(0, 0, 128, 128);
+            context.fillStyle = '#000000';
+            const drawPentagon = (x, y, size) => {
+                context.beginPath();
+                for (let i = 0; i < 5; i++) {
+                    context.lineTo(x + size * Math.cos(i * 2 * Math.PI / 5 - Math.PI / 2),
+                                   y + size * Math.sin(i * 2 * Math.PI / 5 - Math.PI / 2));
+                }
+                context.closePath(); context.fill();
+            };
+            drawPentagon(64, 32, 20); drawPentagon(32, 80, 18); drawPentagon(96, 80, 18);
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping; texture.wrapT = THREE.RepeatWrapping;
+            return texture;
+        }
+
+        async function init() {
+            try {
+                loadingMessage.innerText = 'Initializing Rapier Physics...';
+                // Pass an empty object to init() to satisfy the new API and avoid the warning
+                await RAPIER.init({}); // <--- FIX: Added {}
+
+                loadingMessage.innerText = 'Initializing Three.js Scene...';
+                initThree();
+
+                loadingMessage.innerText = 'Initializing Physics World...';
+                initRapier(); // Call the corrected initRapier
+
+                loadingMessage.innerText = 'Initializing Mediapipe... (Allow Webcam Access)';
+                initMediapipe();
+            } catch (error) {
+                console.error("Initialization failed:", error);
+                loadingMessage.innerText = `Error: ${error.message}. Check console. Refresh may be needed.`;
+                loadingMessage.style.color = 'red';
+            }
+        }
+
+        // --- Corrected and Simplified initRapier ---
+        function initRapier() {
+            const gravity = { x: 0.0, y: -7.0, z: 0.0 };
+            physicsWorld = new RAPIER.World(gravity);
+            eventQueue = new RAPIER.EventQueue(true);
+
+            // Ground Body
+            const groundColliderDesc = RAPIER.ColliderDesc.cuboid(4.0, 0.1, 4.0)
+                .setTranslation(groundMesh.position.x, groundMesh.position.y, groundMesh.position.z);
+            groundBody = physicsWorld.createRigidBody(RAPIER.RigidBodyDesc.fixed());
+            physicsWorld.createCollider(groundColliderDesc, groundBody);
+
+            // Ball Body
+            const ballRigidBodyDesc = RAPIER.RigidBodyDesc.dynamic()
+                .setTranslation(ballMesh.position.x, ballMesh.position.y, ballMesh.position.z)
+                .setLinearDamping(0.1)
+                .setCanSleep(false);
+            ballBody = physicsWorld.createRigidBody(ballRigidBodyDesc);
+            // Create ball collider description directly when creating the collider
+            physicsWorld.createCollider(
+                 RAPIER.ColliderDesc.ball(ballRadius)
+                    .setRestitution(0.6)
+                    .setDensity(1.1)
+                    .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS),
+                 ballBody
+            );
+
+            // --- Player Kinematic Colliders ---
+
+            // Helper function to create a new kinematic body description instance
+            // (This ensures each body gets its own description object)
+            const createKinematicDesc = () => RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(-10, -10, -10);
+
+            // Create bodies and colliders, creating a NEW collider description each time
+            // This avoids the problematic .clone() call
+
+            // Left Knee
+            const leftKneeBody = physicsWorld.createRigidBody(createKinematicDesc());
+            leftKneeCollider = physicsWorld.createCollider(
+                // Create a new collider desc instance here
+                RAPIER.ColliderDesc.ball(playerColliderRadius)
+                    .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS)
+                    .setSensor(false), // Still non-sensor for physics
+                leftKneeBody
+            );
+
+            // Right Knee
+            const rightKneeBody = physicsWorld.createRigidBody(createKinematicDesc());
+            rightKneeCollider = physicsWorld.createCollider(
+                // Create a new collider desc instance here
+                RAPIER.ColliderDesc.ball(playerColliderRadius)
+                    .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS)
+                    .setSensor(false),
+                rightKneeBody
+            );
+
+            // Left Foot
+            const leftFootBody = physicsWorld.createRigidBody(createKinematicDesc());
+            leftFootCollider = physicsWorld.createCollider(
+                // Create a new collider desc instance here
+                RAPIER.ColliderDesc.ball(playerColliderRadius)
+                    .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS)
+                    .setSensor(false),
+                leftFootBody
+            );
+
+            // Right Foot
+            const rightFootBody = physicsWorld.createRigidBody(createKinematicDesc());
+            rightFootCollider = physicsWorld.createCollider(
+                // Create a new collider desc instance here
+                RAPIER.ColliderDesc.ball(playerColliderRadius)
+                    .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS)
+                    .setSensor(false),
+                rightFootBody
+            );
+        }
+
+        function initMediapipe() {
+            // ... (Mediapipe initialization remains exactly the same)
+            if (typeof Pose === 'undefined' || typeof Camera === 'undefined' || typeof drawConnectors === 'undefined') {
+                 loadingMessage.innerText = 'Error: Mediapipe libraries not loaded.'; loadingMessage.style.color = 'red'; return;
+            }
+            const pose = new Pose({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}` });
+            pose.setOptions({ modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+            pose.onResults(onPoseResults);
+
+            const cameraHelper = new Camera(videoElement, {
+                onFrame: async () => {
+                    if (overlayCanvas.width !== videoElement.videoWidth || overlayCanvas.height !== videoElement.videoHeight) {
+                         overlayCanvas.width = videoElement.videoWidth; overlayCanvas.height = videoElement.videoHeight; onWindowResize();
+                    }
+                    try { await pose.send({ image: videoElement }); } catch (error) { console.error("Mediapipe pose.send error:", error); }
+                },
+                width: 640, height: 480
+            });
+            cameraHelper.start().then(() => {
+                loadingMessage.innerText = 'Webcam active! Get ready...';
+                setTimeout(() => loadingMessage.style.display = 'none', 3000);
+                animate(); // Start the main game loop
+            }).catch(err => {
+                console.error("Webcam access denied or error:", err);
+                loadingMessage.innerText = 'Webcam error. Allow access & reload.'; loadingMessage.style.color = 'red';
+            });
+        }
+
+        // --- Mediapipe Processing & Coordinate Mapping ---
+        function onPoseResults(results) { // Webcam overlay drawing - UNCHANGED
+            lastPoseResults = results;
+            overlayCtx.save();
+            overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+             if (results.poseLandmarks && typeof drawConnectors !== 'undefined' && typeof POSE_CONNECTIONS !== 'undefined' && typeof drawLandmarks !== 'undefined') {
+                 // These draw on the LEFT canvas (overlayCanvas)
+                 drawConnectors(overlayCtx, results.poseLandmarks, POSE_CONNECTIONS, { color: '#00FF00', lineWidth: 3 });
+                 drawLandmarks(overlayCtx, results.poseLandmarks, { color: '#FF0000', lineWidth: 2, radius: 4 });
+            }
+            overlayCtx.restore();
+        }
+
+        function mapLandmarkToWorld(landmark) { // Coordinate mapping - UNCHANGED
+            if (!landmark || landmark.visibility < 0.3) return null;
+
+            const worldWidth = 3.5;
+            const worldHeight = 3.5;
+            const yOffset = 0.1;
+            const xOffset = 0;
+
+            const gameX = (1.0 - landmark.x - 0.5) * worldWidth + xOffset;
+            const gameY = (1.0 - landmark.y) * worldHeight + yOffset;
+            const gameZ = 0.0; // Player colliders stay near Z=0
+
+            return { x: gameX, y: Math.max(0, gameY), z: gameZ };
+        }
+
+
+        // --- Game Loop (animate) ---
+        function animate() {
+            requestAnimationFrame(animate);
+            const deltaTime = clock.getDelta();
+
+            // 1. Update Kinematic Colliders AND Visual Meshes from Mediapipe
+            if (lastPoseResults && lastPoseResults.poseLandmarks) {
+                const landmarks = lastPoseResults.poseLandmarks;
+                const L_KNEE = 25, R_KNEE = 26, L_ANKLE = 27, R_ANKLE = 28; // Ankles represent feet
+
+                const leftKneePos = mapLandmarkToWorld(landmarks[L_KNEE]);
+                const rightKneePos = mapLandmarkToWorld(landmarks[R_KNEE]);
+                const leftFootPos = mapLandmarkToWorld(landmarks[L_ANKLE]);
+                const rightFootPos = mapLandmarkToWorld(landmarks[R_ANKLE]);
+
+                // Update physics colliders (no visual change here)
+                updateKinematicCollider(leftKneeCollider, leftKneePos);
+                updateKinematicCollider(rightKneeCollider, rightKneePos);
+                updateKinematicCollider(leftFootCollider, leftFootPos);
+                updateKinematicCollider(rightFootCollider, rightFootPos);
+
+                // Update visual meshes (position and visibility)
+                updateMarkerMesh(leftKneeMesh, leftKneePos);
+                updateMarkerMesh(rightKneeMesh, rightKneePos);
+                updateMarkerMesh(leftFootMesh, leftFootPos);
+                updateMarkerMesh(rightFootMesh, rightFootPos);
+
+                // Update leg lines (position and visibility)
+                updateLegLine(leftLegLine, leftKneeMesh, leftFootMesh);
+                updateLegLine(rightLegLine, rightKneeMesh, rightFootMesh);
+
+            } else {
+                 // Hide all markers and lines if no pose detected
+                 [leftKneeMesh, rightKneeMesh, leftFootMesh, rightFootMesh, leftLegLine, rightLegLine].forEach(obj => {
+                     if (obj) obj.visible = false;
+                 });
+            }
+
+            // 2. Step Physics World & Handle Collisions
+            physicsWorld.step(eventQueue);
+            eventQueue.drainCollisionEvents((handle1, handle2, started) => {
+                const ballHandle = ballBody.collider(0).handle;
+                const playerHandles = [leftKneeCollider.handle, rightKneeCollider.handle, leftFootCollider.handle, rightFootCollider.handle];
+
+                let collidedWithPlayer = false;
+                let playerColliderHandle = null;
+
+                if (handle1 === ballHandle && playerHandles.includes(handle2)) {
+                    collidedWithPlayer = true;
+                    playerColliderHandle = handle2;
+                } else if (handle2 === ballHandle && playerHandles.includes(handle1)) {
+                    collidedWithPlayer = true;
+                    playerColliderHandle = handle1;
+                }
+
+                if (started && collidedWithPlayer && !ballJustHitPlayer) {
+                    score++;
+                    updateScore();
+                    ballJustHitPlayer = true;
+                    const impulse = { x: 0, y: HIT_IMPULSE_Y, z: 0 };
+                    ballBody.applyImpulse(impulse, true);
+                    flashBallColor(0x00ff00, 150);
+                }
+            });
+
+            // 3. Update Three.js Ball Mesh from Physics
+            const ballPosition = ballBody.translation();
+            const ballRotation = ballBody.rotation();
+            ballMesh.position.set(ballPosition.x, ballPosition.y, ballPosition.z);
+            ballMesh.quaternion.set(ballRotation.x, ballRotation.y, ballRotation.z, ballRotation.w);
+
+            // Reset hit flag based on ball state
+             if (ballBody.linvel().y < -0.1 || ballPosition.y < 0.5) {
+                 ballJustHitPlayer = false;
+             }
+
+            // 4. Constrain Z-Axis Movement
+            const currentLinvel = ballBody.linvel();
+            let newZVel = currentLinvel.z * Z_DAMPING - ballPosition.z * Z_CORRECTION_FACTOR;
+            ballBody.setLinvel({ x: currentLinvel.x, y: currentLinvel.y, z: newZVel }, true);
+
+            // 5. Game Logic (Reset ball)
+            const groundLevel = groundMesh.position.y + ballRadius + 0.01;
+            if (ballPosition.y < groundLevel) {
+                resetBall();
+                score = 0;
+                updateScore();
+                ballJustHitPlayer = false;
+                 flashBallColor(0xff0000, 250);
+            } else if (ballPosition.y > 6 || Math.abs(ballPosition.x) > 5) {
+                 resetBall();
+                 ballJustHitPlayer = false;
+            }
+
+            // 6. Render Scene
+            renderer.render(scene, camera);
+        }
+
+
+        // --- Helper Functions ---
+
+        // Updates the physics collider position
+        function updateKinematicCollider(collider, targetPos) {
+             if (targetPos && collider && collider.parent()) { // Check if collider and its body exist
+                 collider.parent().setNextKinematicTranslation(targetPos);
+             }
+             // Note: Physics colliders are invisible, no mesh update here
+        }
+
+        // Updates the visual marker mesh position and visibility
+        function updateMarkerMesh(mesh, targetPos) {
+            if (targetPos && mesh) {
+                mesh.position.copy(targetPos);
+                 // Optional: Offset foot slightly lower visually if needed
+                 if (mesh === leftFootMesh || mesh === rightFootMesh) {
+                     mesh.position.y -= footMarkerSize.h / 3; // Adjust visually
+                     // Optional: Rotate shoe slightly? e.g., mesh.rotation.x = -0.2;
+                 }
+                mesh.visible = true;
+             } else if (mesh) {
+                 mesh.visible = false;
+             }
+        }
+
+        // Updates the leg line connecting knee and foot
+        function updateLegLine(line, kneeMesh, footMesh) {
+            if (kneeMesh.visible && footMesh.visible) {
+                const points = [];
+                points.push(kneeMesh.position.clone());
+                points.push(footMesh.position.clone());
+                line.geometry.setFromPoints(points);
+                line.geometry.attributes.position.needsUpdate = true; // Tell Three.js the points changed
+                line.visible = true;
+            } else {
+                line.visible = false;
+            }
+        }
+
+        function resetBall() {
+             const startX = (Math.random() - 0.5) * 1.0;
+             const startZ = (Math.random() - 0.5) * 0.2;
+             ballBody.setTranslation({ x: startX, y: 2.5, z: startZ }, true);
+            ballBody.setLinvel({ x: (Math.random() - 0.5) * 1, y: -1, z: (Math.random() - 0.5) * 0.2 }, true);
+            ballBody.setAngvel({ x: 0, y: 0, z: 0 }, true);
+            ballMesh.material.color.set(0xffffff); // Reset color
+        }
+
+        function updateScore() {
+            scoreElement.innerText = `Keep-ups: ${score}`;
+        }
+
+        let flashTimeout = null;
+        function flashBallColor(color, durationMs) {
+            if (flashTimeout) clearTimeout(flashTimeout);
+            ballMesh.material.color.set(color);
+            flashTimeout = setTimeout(() => {
+                ballMesh.material.color.set(0xffffff);
+                 flashTimeout = null;
+            }, durationMs);
+        }
+
+        function onWindowResize() {
+            // ... (onWindowResize remains exactly the same)
+             if (!camera || !renderer || !gameContainer) return;
+            const containerWidth = gameContainer.offsetWidth;
+            const containerHeight = gameContainer.offsetHeight;
+            camera.aspect = containerWidth / containerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(containerWidth, containerHeight);
+            if (videoElement.videoWidth > 0 && videoElement.videoHeight > 0) {
+                 overlayCanvas.width = videoElement.videoWidth;
+                 overlayCanvas.height = videoElement.videoHeight;
+            }
+        }
+
+        // --- Start ---
+        init();
+
+    </script>
+</body>
+</html>
