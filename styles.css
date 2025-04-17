@@ -1,0 +1,117 @@
+body {
+    margin: 0;
+    overflow: hidden; /* Prevent scrollbars */
+    font-family: sans-serif;
+    background-color: #222;
+    color: white; /* Default text color */
+    font-family: Helvetica, sans-serif;
+}
+
+.container {
+    display: flex;
+    width: 100vw;
+    height: 100vh;
+}
+
+.webcam-container {
+    position: relative; /* Needed for absolute positioning of overlay */
+    width: 50%;
+    height: 100%;
+    background-color: #111;
+}
+
+#webcam, #overlayCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Cover the area, might crop */
+    transform: scaleX(-1); /* Mirror webcam */
+}
+
+#overlayCanvas {
+   background: transparent; /* Make canvas transparent */
+   z-index: 1; /* Ensure overlay is on top of video */
+}
+
+#game-container {
+    width: 50%;
+    height: 100%;
+    background-color: transparent; /* Change from #333 to transparent */
+    background-image: url('background.webp'); /* Add background directly */
+    background-size: cover;
+    background-position: center;
+    position: relative;
+}
+
+canvas#gameCanvas { /* Style the canvas added by three.js */
+    display: block; /* Remove potential bottom space */
+    width: 100% !important; /* Override three.js inline style */
+    height: 100% !important;/* Override three.js inline style */
+}
+
+#loading-message {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    color: white;
+    background: rgba(0,0,0,0.7);
+    padding: 10px;
+    border-radius: 5px;
+    z-index: 10;
+}
+/*
+ #score {
+    position: absolute;
+    top: 10px;
+    right: 50%;
+    transform: translateX(50%);
+    font-size: 24px;
+    color: rgb(255, 0, 217);
+    background: rgba(0,0,0,0.5);
+    padding: 10px;
+    border-radius: 0px;
+    z-index: 5;
+ }
+ */
+
+ #score {
+    position: absolute;
+    top: 10px;
+    right: 50%;
+    transform: translateX(50%);
+    text-align: center;
+    border-radius: 18px;
+	text-shadow: 2px 2px 3px rgba(0,0,0,.2);
+	font-size: 24px;
+	box-shadow: 
+		-6px -6px 26px rgba(5, 230, 255, 0.83),
+		5px 10px 15px rgba(0,0,0,.05),
+		15px 20px 35px rgba(0,0,0,.1),
+		inset -2px -2px 2px rgba(0,0,0,.1),
+		inset -1px -1px 3px rgba(255,255,255,.6),
+		inset 2px 2px 8px rgba(255,255,255,.2),
+		inset 1px 1px 8px rgba(255,255,255,.2),
+		-6px -6px 26px rgba(242, 21, 253, 0.8);
+	background-color: #e9e9ef;
+	margin: auto;
+	border: 0;
+    padding: 20px;
+    color: black;
+ }
+
+ /* NEW: Style for T-pose message */
+ #tpose-indicator {
+     position: absolute;
+     bottom: 10px;
+     left: 50%; /* Center horizontally within the left webcam container */
+     transform: translateX(-50%);
+     font-size: 16px;
+     color: cyan;
+     background: rgba(0,0,0,0.6);
+     padding: 5px 8px;
+     border-radius: 4px;
+     z-index: 10;
+     display: none; /* Hidden by default */
+}

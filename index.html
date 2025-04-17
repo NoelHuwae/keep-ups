@@ -4,94 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3D Keep-Ups</title>
-    <style>
-        /* CSS remains the same as before */
-        body {
-            margin: 0;
-            overflow: hidden; /* Prevent scrollbars */
-            font-family: sans-serif;
-            background-color: #222;
-            color: white; /* Default text color */
-        }
+    <link rel="stylesheet" href="styles.css">
 
-        .container {
-            display: flex;
-            width: 100vw;
-            height: 100vh;
-        }
-
-        .webcam-container {
-            position: relative; /* Needed for absolute positioning of overlay */
-            width: 50%;
-            height: 100%;
-            background-color: #111;
-        }
-
-        #webcam, #overlayCanvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover; /* Cover the area, might crop */
-            transform: scaleX(-1); /* Mirror webcam */
-        }
-
-        #overlayCanvas {
-           background: transparent; /* Make canvas transparent */
-           z-index: 1; /* Ensure overlay is on top of video */
-        }
-
-        #game-container {
-            width: 50%;
-            height: 100%;
-            background-color: #333;
-            position: relative; /* If you need to position UI elements */
-        }
-
-        canvas#gameCanvas { /* Style the canvas added by three.js */
-            display: block; /* Remove potential bottom space */
-            width: 100% !important; /* Override three.js inline style */
-            height: 100% !important;/* Override three.js inline style */
-        }
-
-        #loading-message {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            color: white;
-            background: rgba(0,0,0,0.7);
-            padding: 10px;
-            border-radius: 5px;
-            z-index: 10;
-        }
-         #score {
-            position: absolute;
-            top: 10px;
-            right: 60%; /* Position relative to viewport width */
-            transform: translateX(-10px); /* Adjust spacing from the split */
-            font-size: 24px;
-            color: yellow;
-            background: rgba(0,0,0,0.5);
-            padding: 5px 10px;
-            border-radius: 5px;
-            z-index: 5;
-         }
-         /* NEW: Style for T-pose message */
-         #tpose-indicator {
-             position: absolute;
-             bottom: 10px;
-             left: 50%; /* Center horizontally within the left webcam container */
-             transform: translateX(-50%);
-             font-size: 16px;
-             color: cyan;
-             background: rgba(0,0,0,0.6);
-             padding: 5px 8px;
-             border-radius: 4px;
-             z-index: 10;
-             display: none; /* Hidden by default */
-         }
-    </style>
     <!-- Load Mediapipe libraries FIRST -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
@@ -99,6 +13,7 @@
 </head>
 <body>
     <div class="container">
+        <div id="background"></div>
         <div class="webcam-container">
             <video id="webcam" autoplay playsinline></video>
             <canvas id="overlayCanvas"></canvas>
@@ -127,10 +42,10 @@
         let leftKneeCollider, rightKneeCollider, leftFootCollider, rightFootCollider;
         let leftKneeMesh, rightKneeMesh, leftFootMesh, rightFootMesh; // Visual representations
         let leftLegLine, rightLegLine; // Lines connecting knees and feet
-        const playerColliderRadius = 0.12; // Keep physics collider size consistent
+        const playerColliderRadius = 0.13; // Keep physics collider size consistent
         const kneeMarkerRadius = 0.2; // Visual size for knee circle
         const footMarkerSize = { w: 0.35, h: 0.12, d: 0.35 }; // Width, height, depth for shoe marker
-        const ballRadius = 0.2;
+        const ballRadius = 0.22;
         let score = 0;
         let ballJustHitPlayer = false;
 
@@ -146,7 +61,7 @@
         let lastPoseResults = null;
 
         // --- Configurable Game Parameters ---
-        const COLLISION_BASE_IMPULSE_Y = 0.35;
+        const COLLISION_BASE_IMPULSE_Y = 0.5;
         const MAX_UPWARD_VELOCITY = 5;
         const Z_DAMPING = 0.55;
         const Z_CORRECTION_FACTOR = 0.1;
@@ -166,25 +81,28 @@
         // (These functions remain largely the same as before)
         function initThree() {
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x87ceeb); // Sky blue
-
             const aspect = gameContainer.offsetWidth / gameContainer.offsetHeight;
             camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 100);
             camera.position.set(0, 2, 5);
             camera.lookAt(0, 0.8, 0);
 
-            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false });
             renderer.setSize(gameContainer.offsetWidth, gameContainer.offsetHeight);
             renderer.shadowMap.enabled = true;
             renderer.domElement.id = 'gameCanvas';
+            renderer.setClearColor(0x000000, 0.0);
             gameContainer.appendChild(renderer.domElement);
+
+            // Change setClearColor to ensure full transparency:
+            renderer.setClearColor(0x000000, 0); // Make sure alpha is 0 for full transparency
+
 
             clock = new THREE.Clock();
 
             // Lighting
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 3.5);
             scene.add(ambientLight);
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.9);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 3.5);
             directionalLight.position.set(3, 8, 5);
             directionalLight.castShadow = true;
             directionalLight.shadow.mapSize.width = 1024;
@@ -192,11 +110,11 @@
             scene.add(directionalLight);
 
             // Ground
-            const groundGeometry = new THREE.BoxGeometry(8, 0.2, 8);
+            const groundGeometry = new THREE.BoxGeometry(5.5, 0.2, 5.5);
             const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x228b22 }); // Forest green
             groundMesh = new THREE.Mesh(groundGeometry, groundMaterial);
             groundMesh.receiveShadow = true;
-            groundMesh.position.y = -0.1;
+            groundMesh.position.y = -0.5;
             scene.add(groundMesh);
 
             // Ball
@@ -209,7 +127,7 @@
              });
             ballMesh = new THREE.Mesh(ballGeometry, ballMaterial);
             ballMesh.castShadow = true;
-            ballMesh.position.y = 2.5;
+            ballMesh.position.y = 4.0;
             scene.add(ballMesh);
 
             // --- Player Marker Visuals ---
