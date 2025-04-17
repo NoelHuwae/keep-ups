@@ -27,6 +27,23 @@
     <!-- Info / Loading Message -->
     <div id="loading-message">Loading libraries...</div>
     <div id="score">Keep-ups: 0</div>
+    
+    <!-- New Instructions Button -->
+    <button id="instructions-button">?</button>
+
+    <!-- New Instructions Overlay -->
+    <div id="instructions-overlay">
+        <div id="instructions-content">
+            <h2>3D Keep-Ups ⚽</h2>
+            <ul>
+                <li>Keep the soccer ball in the air</li>
+                <li>Move your knees and feet</li>
+                <li>Stretch out your arms (T-pose) for 1 second to reset the ball</li>
+            </ul>
+            <p>Position yourself so your full body is visible to the camera</p>
+            <p class="instructions-note">Click anywhere to close</p>
+        </div>
+    </div>
 
     <!-- Main Game Logic (Module) -->
     <script type="module">
@@ -57,6 +74,11 @@
         const loadingMessage = document.getElementById('loading-message');
         const scoreElement = document.getElementById('score');
         const tposeIndicatorElement = document.getElementById('tpose-indicator'); // NEW
+        
+        // New Instructions Elements
+        const instructionsButton = document.getElementById('instructions-button');
+        const instructionsOverlay = document.getElementById('instructions-overlay');
+        let instructionsTimeout = null;
 
         let lastPoseResults = null;
 
@@ -76,6 +98,39 @@
         const LANDMARK_VISIBILITY_THRESHOLD = 0.4; // Visibility needed for T-pose check
         // Landmark indices (check Mediapipe documentation for confirmation)
         const L_SHOULDER = 11, R_SHOULDER = 12, L_ELBOW = 13, R_ELBOW = 14, L_WRIST = 15, R_WRIST = 16;
+
+        // --- Instructions Handling ---
+        function showInstructions() {
+            instructionsOverlay.classList.add('visible');
+            
+            // Clear any existing timeout
+            if (instructionsTimeout) {
+                clearTimeout(instructionsTimeout);
+            }
+            
+            // Set new timeout to hide instructions after 10 seconds
+            instructionsTimeout = setTimeout(() => {
+                hideInstructions();
+            }, 10000);
+        }
+        
+        function hideInstructions() {
+            instructionsOverlay.classList.remove('visible');
+            if (instructionsTimeout) {
+                clearTimeout(instructionsTimeout);
+                instructionsTimeout = null;
+            }
+        }
+        
+        // Set up event listeners for instructions
+        instructionsButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showInstructions();
+        });
+        
+        instructionsOverlay.addEventListener('click', () => {
+            hideInstructions();
+        });
 
         // --- Initialization Functions (initThree, createSoccerTexture, init, initRapier, initMediapipe) ---
         // (These functions remain largely the same as before)
@@ -194,6 +249,9 @@
 
                 loadingMessage.innerText = 'Initializing Mediapipe... (Allow Webcam Access)';
                 initMediapipe();
+                
+                // Show instructions on game start
+                showInstructions();
             } catch (error) {
                 console.error("Initialization failed:", error);
                 loadingMessage.innerText = `Error: ${error.message}. Check console. Refresh may be needed.`;
