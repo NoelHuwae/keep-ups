@@ -45,7 +45,7 @@
         const playerColliderRadius = 0.13; // Keep physics collider size consistent
         const kneeMarkerRadius = 0.2; // Visual size for knee circle
         const footMarkerSize = { w: 0.35, h: 0.12, d: 0.35 }; // Width, height, depth for shoe marker
-        const ballRadius = 0.22;
+        const ballRadius = 0.25;
         let score = 0;
         let ballJustHitPlayer = false;
 
@@ -61,19 +61,19 @@
         let lastPoseResults = null;
 
         // --- Configurable Game Parameters ---
-        const COLLISION_BASE_IMPULSE_Y = 0.5;
+        const COLLISION_BASE_IMPULSE_Y = 0.7;
         const MAX_UPWARD_VELOCITY = 5;
-        const Z_DAMPING = 0.55;
+        const Z_DAMPING = 0.8;
         const Z_CORRECTION_FACTOR = 0.1;
         const GRAVITY_Y = -8;
 
         // --- T-Pose Reset Variables ---
         let isTPosing = false;
         let tPoseStartTime = 0;
-        const T_POSE_DURATION_THRESHOLD_MS = 1000; // 1 second
+        const T_POSE_DURATION_THRESHOLD_MS = 700; // ms
         const T_POSE_RESET_COOLDOWN_MS = 2000;     // 2 seconds after reset
         let tPoseResetCooldownActive = false;
-        const LANDMARK_VISIBILITY_THRESHOLD = 0.7; // Visibility needed for T-pose check
+        const LANDMARK_VISIBILITY_THRESHOLD = 0.4; // Visibility needed for T-pose check
         // Landmark indices (check Mediapipe documentation for confirmation)
         const L_SHOULDER = 11, R_SHOULDER = 12, L_ELBOW = 13, R_ELBOW = 14, L_WRIST = 15, R_WRIST = 16;
 
@@ -103,7 +103,7 @@
             const ambientLight = new THREE.AmbientLight(0xffffff, 3.5);
             scene.add(ambientLight);
             const directionalLight = new THREE.DirectionalLight(0xffffff, 3.5);
-            directionalLight.position.set(3, 8, 5);
+            directionalLight.position.set(1, 3, -5);
             directionalLight.castShadow = true;
             directionalLight.shadow.mapSize.width = 1024;
             directionalLight.shadow.mapSize.height = 1024;
@@ -291,10 +291,32 @@
             lastPoseResults = results; // Store results for game loop
             overlayCtx.save();
             overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+            
             if (results.poseLandmarks && typeof drawConnectors !== 'undefined' && typeof POSE_CONNECTIONS !== 'undefined' && typeof drawLandmarks !== 'undefined') {
-                 drawConnectors(overlayCtx, results.poseLandmarks, POSE_CONNECTIONS, { color: '#00FF00', lineWidth: 3 });
-                 drawLandmarks(overlayCtx, results.poseLandmarks, { color: '#FF0000', lineWidth: 2, radius: 4 });
+                // Filter out face landmarks (0-10) before drawing
+                const bodyLandmarks = results.poseLandmarks.map((landmark, index) => {
+                    // Keep only body landmarks (11 and above)
+                    if (index >= 11) {
+                        return landmark;
+                    } else {
+                        // For face landmarks (0-10), return a landmark with zero visibility
+                        return {
+                            x: landmark.x,
+                            y: landmark.y,
+                            z: landmark.z,
+                            visibility: 0
+                        };
+                    }
+                });
+                
+                // Draw connections with filtered landmarks
+                drawConnectors(overlayCtx, bodyLandmarks, POSE_CONNECTIONS, { color: '#00FF00', lineWidth: 3 });
+                
+                // Draw only body landmarks (filter out 0-10 indices)
+                const filteredLandmarks = results.poseLandmarks.filter((_, index) => index >= 11);
+                drawLandmarks(overlayCtx, filteredLandmarks, { color: '#FF0000', lineWidth: 2, radius: 4 });
             }
+            
             overlayCtx.restore();
         }
 
@@ -335,10 +357,10 @@
 
             // --- Simple T-Pose Check (adjust tolerances as needed) ---
             // Y-Tolerance: How much vertical deviation is allowed (smaller Y means higher up)
-            const yTolerance = 0.08; // Allow some droop (in normalized coordinates)
+            const yTolerance = 0.3; // Allow some droop (in normalized coordinates)
             // X-Tolerance: Ensure arms are extended outwards
             const xToleranceShoulder = 0.1; // Elbow must be horizontally further than shoulder
-            const xToleranceElbow = 0.08; // Wrist must be horizontally further than elbow
+            const xToleranceElbow = 0.1; // Wrist must be horizontally further than elbow
 
             // Left Arm Check
             const leftArmHorizontal = lElbow.y < lShoulder.y + yTolerance && lWrist.y < lElbow.y + yTolerance;
