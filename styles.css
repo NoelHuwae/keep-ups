@@ -39,7 +39,7 @@ body {
     width: 50%;
     height: 100%;
     background-color: transparent; /* Change from #333 to transparent */
-    background-image: url('background.webp'); /* Add background directly */
+    background-image: url('assets/background.webp'); /* Add background directly */
     background-size: cover;
     background-position: center;
     position: relative;
